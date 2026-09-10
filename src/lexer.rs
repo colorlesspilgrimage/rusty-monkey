@@ -18,7 +18,7 @@ impl<'a> Lexer<'a>  {
     pub fn new(f: &'a [u8]) -> Self {
         Self {
             input: f,
-            input_len: f.len(),
+            input_len: f.len() - 1,
             current_pos: 0,
         }
     }
@@ -36,7 +36,13 @@ impl<'a> Lexer<'a>  {
     }
 
     pub fn peek_token(&self) -> Option<u8> {
+        // TODO: I think this if statement is causing our overflow - we might need to break this into two
+        // statements where we check that current_pos is less than input_len BEFORE we check if current_pos + 1
+        // is valid, since the first should prevent us from hitting an overflow condition.
         if (self.current_pos < self.input_len) && (self.current_pos + 1) < self.input_len  {
+            if (is_whitespace(self.input[self.current_pos + 1])) {
+                return self.peek_token();
+            }
             return Some(self.input[self.current_pos + 1]);
         }
 
@@ -76,7 +82,7 @@ mod tests {
     #[test]
     fn test_init() {
         let test_lex = Lexer::new(&TEST_DATA);
-        assert!(test_lex.input_len == 7);
+        assert!(test_lex.input_len == 6);
         assert!(test_lex.input == TEST_DATA);
     }
 
@@ -94,5 +100,30 @@ mod tests {
         test_lex.current_pos = 10;
         assert!((test_lex.rewind_input_steps(8)) && test_lex.current_pos == 2);
         assert!(!(test_lex.rewind_input_steps(11)));
+    }
+
+    #[test]
+    fn test_get_token() {
+        let mut test_lex = Lexer::new(&TEST_DATA);
+        assert!(test_lex.get_token() == Some(3));
+        assert!(test_lex.get_token() == Some(5));
+        assert!(test_lex.get_token() == Some(2));
+        assert!(test_lex.get_token() == Some(3));
+        assert!(test_lex.get_token() == Some(24));
+        assert!(test_lex.get_token() == None);
+    }
+
+    #[test]
+    fn test_peek_token() {
+        let mut test_lex = Lexer::new(&TEST_DATA);
+        assert!(test_lex.peek_token() == Some (5));
+        _ = test_lex.get_token();
+        assert!(test_lex.peek_token() == Some(2));
+        _ = test_lex.get_token();
+        assert!(test_lex.peek_token() == Some(3));
+        _ = test_lex.get_token();
+        assert!(test_lex.peek_token() == Some(24));
+        _ = test_lex.get_token();
+        assert!(test_lex.peek_token() == None);
     }
 }
