@@ -36,14 +36,14 @@ impl<'a> Lexer<'a>  {
     }
 
     pub fn peek_token(&self) -> Option<u8> {
-        // TODO: I think this if statement is causing our overflow - we might need to break this into two
-        // statements where we check that current_pos is less than input_len BEFORE we check if current_pos + 1
-        // is valid, since the first should prevent us from hitting an overflow condition.
-        if (self.current_pos < self.input_len) && (self.current_pos + 1) < self.input_len  {
-            if (is_whitespace(self.input[self.current_pos + 1])) {
-                return self.peek_token();
+        // TODO: this function is causing a stack overflow in its unit test.
+        if (self.current_pos <= self.input_len) {
+            if (self.current_pos + 1) <= self.input_len {
+                if (is_whitespace(self.input[self.current_pos + 1])) {
+                    return self.peek_token();
             }
-            return Some(self.input[self.current_pos + 1]);
+                return Some(self.input[self.current_pos + 1]);
+            }
         }
 
         return None;
@@ -56,13 +56,14 @@ impl<'a> Lexer<'a>  {
     pub fn rewind_input_steps(&mut self, rewind_steps: usize) -> bool {
         let mut x = rewind_steps;
     
-        // make sure we aren't trying to rewind more than we have input
+        // TODO: this doesn't really work since usize will just overflow if we subtract from 0.
+        // check if there is a method that will tell us with a bool if we will overflow or not?
         if (self.current_pos - rewind_steps) < 0 {
             return false;
         }
 
-        while (x != 0 && self.current_pos >= 0) {
-            while (is_whitespace(self.input[self.current_pos]) && (self.current_pos >= 0)) {
+        while x != 0 {
+            while is_whitespace(self.input[self.current_pos]) {
                 self.current_pos -= 1;
             }
             x -= 1;
