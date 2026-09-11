@@ -23,11 +23,15 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    // NOTE: I think part of the overflow issue is happening here - we are somehow ending up with indeces
+    // that are not valid for the target type and range. something about the logic of how we circumvent whitespace
+    // and check to ensure we are not indexing out of bounds is incorrect.
     pub fn get_token(&mut self) -> Option<u8> {
-        if self.current_pos < self.input_len {
+        if self.current_pos <= self.input_len {
             while (is_whitespace(self.input[self.current_pos])) {
                 self.current_pos += 1;
             }
+
             self.current_pos += 1;
             return Some(self.input[self.current_pos - 1]);
         }
@@ -104,6 +108,7 @@ mod tests {
     #[test]
     fn test_get_token() {
         let mut test_lex = Lexer::new(&TEST_DATA);
+        println!("{}", test_lex.input_len);
         assert!(test_lex.get_token() == Some(3));
         assert!(test_lex.get_token() == Some(5));
         assert!(test_lex.get_token() == Some(2));
