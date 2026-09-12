@@ -23,13 +23,16 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    // NOTE: I think part of the overflow issue is happening here - we are somehow ending up with indeces
-    // that are not valid for the target type and range. something about the logic of how we circumvent whitespace
-    // and check to ensure we are not indexing out of bounds is incorrect.
     pub fn get_token(&mut self) -> Option<u8> {
         if self.current_pos <= self.input_len {
             while (is_whitespace(self.input[self.current_pos])) {
-                self.current_pos += 1;
+                // If we are currently at the final index of the input (or somehow over it) and discover that the final character
+                // is whitespace, break out early and return None to avoid indexing OOB
+                if self.current_pos >= self.input_len {
+                    return None;
+                } else {
+                    self.current_pos += 1;
+                }
             }
 
             self.current_pos += 1;
@@ -39,16 +42,10 @@ impl<'a> Lexer<'a> {
         return None;
     }
 
-    pub fn peek_token(&self) -> Option<u8> {
-        // TODO: this function is causing a stack overflow in its unit test.
-        if (self.current_pos <= self.input_len) && (self.current_pos + 1 <= self.input_len) {
-            if is_whitespace(self.input[self.current_pos + 1]) {
-                return self.peek_token();
-            }
-            return Some(self.input[self.current_pos + 1]);
-        }
-
-        return None;
+    pub fn peek_token(&mut self) -> Option<u8> {
+        let peek_val = self.get_token();
+        self.current_pos -= 1;
+        return peek_val;
     }
 
     pub fn rewind_input(&mut self) {
@@ -96,7 +93,6 @@ mod tests {
         assert!(test_lex.current_pos == 0);
     }
 
-    // FAILING
     #[test]
     fn test_rewind_input_steps() {
         let mut test_lex = Lexer::new(&TEST_DATA);
@@ -108,27 +104,28 @@ mod tests {
     #[test]
     fn test_get_token() {
         let mut test_lex = Lexer::new(&TEST_DATA);
-        println!("{}", test_lex.input_len);
         assert!(test_lex.get_token() == Some(3));
         assert!(test_lex.get_token() == Some(5));
         assert!(test_lex.get_token() == Some(2));
         assert!(test_lex.get_token() == Some(3));
         assert!(test_lex.get_token() == Some(24));
         assert!(test_lex.get_token() == None);
+        assert!(test_lex.get_token() == None);
     }
 
     #[test]
     fn test_peek_token() {
         let mut test_lex = Lexer::new(&TEST_DATA);
+        assert!(test_lex.peek_token() == Some(3));
+        _ = test_lex.get_token();
         assert!(test_lex.peek_token() == Some(5));
         _ = test_lex.get_token();
         assert!(test_lex.peek_token() == Some(2));
         _ = test_lex.get_token();
         assert!(test_lex.peek_token() == Some(3));
         _ = test_lex.get_token();
-        // The code below is where the stack overflow is happening.
-        //assert!(test_lex.peek_token() == Some(32));
-        //_ = test_lex.get_token();
-        //assert!(test_lex.peek_token() == None);
+        assert!(test_lex.peek_token() == Some(24));
+        _ = test_lex.get_token();
+        assert!(test_lex.peek_token() == None);
     }
 }
