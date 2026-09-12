@@ -55,15 +55,14 @@ impl<'a> Lexer<'a> {
     pub fn rewind_input_steps(&mut self, rewind_steps: usize) -> bool {
         let mut x = rewind_steps;
 
-        // TODO: this doesn't really work since usize will just overflow if we subtract from 0.
-        // check if there is a method that will tell us with a bool if we will overflow or not?
-        if (self.current_pos - rewind_steps) < 0 {
+        if self.current_pos.checked_sub(rewind_steps).is_none() {
             return false;
         }
 
         while x != 0 {
             while is_whitespace(self.input[self.current_pos]) {
                 self.current_pos -= 1;
+                x -= 1;
             }
             x -= 1;
             self.current_pos -= 1;
@@ -96,8 +95,8 @@ mod tests {
     #[test]
     fn test_rewind_input_steps() {
         let mut test_lex = Lexer::new(&TEST_DATA);
-        test_lex.current_pos = 10;
-        assert!((test_lex.rewind_input_steps(8)) && test_lex.current_pos == 2);
+        test_lex.current_pos = 6;
+        assert!((test_lex.rewind_input_steps(5)) && test_lex.current_pos == 1);
         assert!(!(test_lex.rewind_input_steps(11)));
     }
 
