@@ -10,6 +10,17 @@ pub struct Lexer<'a> {
     current_pos: usize,
 }
 
+#[derive(PartialEq)]
+pub enum Token {
+    Let(String),
+    IsMut(String),
+    AssignOrEq(String),
+    MathOp(String),
+    Literal(String),
+    Numerical(String),
+    // TODO: We still need to implement function call parsing here
+}
+
 /// Check if a given character is whitespace. Utility function to allow
 /// easy skipping of whitespace during lexing.
 fn is_whitespace(c: u8) -> bool {
@@ -32,32 +43,23 @@ impl<'a> Lexer<'a> {
     }
     /// Return the next token in the input as an `Option<u8>`. Returns None when the input is exhausted. Skips
     /// and discards all whitespace in the input.
-    pub fn get_token(&mut self) -> Option<u8> {
-        if self.current_pos <= self.input_len {
-            while is_whitespace(self.input[self.current_pos]) {
-                // If we are currently at the final index of the input (or somehow over it) and discover that the final character
-                // is whitespace, break out early and return None to avoid indexing OOB
-                if self.current_pos >= self.input_len {
-                    return None;
-                } else {
-                    self.current_pos += 1;
-                }
-            }
-
-            self.current_pos += 1;
-            return Some(self.input[self.current_pos - 1]);
+    pub fn get_token(&mut self) -> Option<Token> {
+        let mut token: String = String::new();
+        while !is_whitespace(self.input[self.current_pos]) && self.current_pos <= self.input_len {
+            token.push(self.input[self.current_pos] as char);
         }
 
-        return None;
-    }
-
-    /// "Peek" ahead at the next token without advancing the `current_pos` field in the Lexer struct.
-    /// When generating the AST, this allows us to see if the next character in the input is lexically relevant or if
-    /// the statement is complete.
-    pub fn peek_token(&mut self) -> Option<u8> {
-        let peek_val = self.get_token();
-        self.current_pos -= 1;
-        return peek_val;
+        if token.chars().all(|c| c.is_ascii_digit()) {
+            return Some(Token::Numerical(token));
+        } else {
+            return match token.as_str() {
+                "let" => Some(Token::Let(token)),
+                "mut" => Some(Token::IsMut(token)),
+                "=" => Some(Token::AssignOrEq(token)),
+                "+" | "-" | "/" | "*" => Some(Token::MathOp(token)),
+                _ => Some(Token::Literal(token)),
+            };
+        }
     }
 
     /// Rewind the input stream to the beginning.
@@ -87,6 +89,7 @@ impl<'a> Lexer<'a> {
     }
 }
 
+// TODO: all tests are now failing since we re-wrote the lexer logic to operate on enumerated tokens.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,21 +128,5 @@ mod tests {
         assert!(test_lex.get_token() == Some(24));
         assert!(test_lex.get_token() == None);
         assert!(test_lex.get_token() == None);
-    }
-
-    #[test]
-    fn test_peek_token() {
-        let mut test_lex = Lexer::new(&TEST_DATA);
-        assert!(test_lex.peek_token() == Some(3));
-        _ = test_lex.get_token();
-        assert!(test_lex.peek_token() == Some(5));
-        _ = test_lex.get_token();
-        assert!(test_lex.peek_token() == Some(2));
-        _ = test_lex.get_token();
-        assert!(test_lex.peek_token() == Some(3));
-        _ = test_lex.get_token();
-        assert!(test_lex.peek_token() == Some(24));
-        _ = test_lex.get_token();
-        assert!(test_lex.peek_token() == None);
     }
 }
